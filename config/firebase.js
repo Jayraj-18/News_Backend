@@ -6,11 +6,13 @@ let db;
 try {
   let serviceAccount;
 
-  // Check if environment variable exists (Production / Render)
+  // 1. Check if Render Environment Variable is present
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
+      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+      : process.env.FIREBASE_SERVICE_ACCOUNT;
   } else {
-    // Fallback to local JSON file (Local Development)
+    // 2. Fallback to local JSON file for local development
     const serviceAccountPath = path.join(__dirname, '..', 'serviceAccountKey.json');
     serviceAccount = require(serviceAccountPath);
   }
