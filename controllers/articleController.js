@@ -2,8 +2,6 @@ const NewsModel = require('../models/newsModel');
 
 // POST /api/articles
 exports.createArticle = async (req, res, next) => {
-
-
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
