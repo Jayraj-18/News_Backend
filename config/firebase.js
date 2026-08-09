@@ -6,15 +6,24 @@ let db;
 try {
   let serviceAccount;
 
-  // 1. Check if Render Environment Variable is present
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    // Parse JSON from environment variable
     serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
       ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
       : process.env.FIREBASE_SERVICE_ACCOUNT;
+
+    // Fix formatting for escaped newline characters in private_key
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
   } else {
-    // 2. Fallback to local JSON file for local development
+    // Fallback to local file for development
     const serviceAccountPath = path.join(__dirname, '..', 'serviceAccountKey.json');
-    serviceAccount = require(serviceAccountPath);
+    try {
+      serviceAccount = require(serviceAccountPath);
+    } catch (err) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is missing on Render and serviceAccountKey.json was not found locally.");
+    }
   }
 
   if (!admin.apps.length) {

@@ -7,7 +7,6 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-// Allow localhost development and any production origins configured through env.
 const configuredOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '')
   .split(',')
   .map((value) => value.trim())
@@ -15,15 +14,12 @@ const configuredOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL
 
 const allowedOrigins = new Set([
   'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
   ...configuredOrigins,
 ]);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. curl, Postman) or same-origin requests.
+    // Allow requests with no origin (e.g., Postman, curl, or mobile native apps)
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.has(origin)) return callback(null, true);
@@ -40,6 +36,7 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
+// Handle Chrome/Blink Private Network Access headers
 app.use((req, res, next) => {
   if (req.headers['access-control-request-private-network'] === 'true') {
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
@@ -47,16 +44,21 @@ app.use((req, res, next) => {
   next();
 });
 
+// Apply CORS middleware globally (handles preflights automatically)
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }));  // Parse JSON bodies (articles may have images as base64)
+app.use(express.json({ limit: '10mb' })); // Parse JSON bodies (base64 images)
 app.use(express.urlencoded({ extended: true }));
 
-// ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
+// ─── HEALTH CHECK & ROOT ──────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Maharashtra News 24 Backend is running 🚀' });
+  res.status(200).json({ status: 'ok', message: 'पालघर दृष्टी Backend is running 🚀' });
+});
+
+app.get('/', (req, res) => {
+  console.log('Server is running');
+  res.status(200).json({ status: 'ok', message: 'Maharashtra News 24 API Service' });
 });
 
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
@@ -68,6 +70,7 @@ app.use((req, res) => {
 });
 
 // ─── GLOBAL ERROR HANDLER ─────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ success: false, message: 'Internal server error', error: err.message });
