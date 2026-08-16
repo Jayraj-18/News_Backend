@@ -29,6 +29,9 @@ exports.getAllArticles = async (req, res, next) => {
     const { category } = req.query;
     const articles = await NewsModel.getArticles(category);
 
+    // Let browsers and CDNs cache the list for 1 min; serve stale up to 5 min while revalidating
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+
     return res.status(200).json({
       success: true,
       count: articles.length,

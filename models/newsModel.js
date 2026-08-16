@@ -2,6 +2,16 @@ const { db } = require('../config/firebase');
 
 const ARTICLES_REF = 'articles';
 
+// ─── In-memory server cache ───────────────────────────────────────────────
+// Avoids hammering Firebase Realtime Database on every request.
+// Cache is invalidated any time an article is written or deleted.
+const SERVER_CACHE_TTL_MS = 30 * 1000; // 30 seconds
+let _cacheData = null;       // { all: Article[], ts: number }
+
+function invalidateCache() {
+    _cacheData = null;
+}
+
 class NewsModel {
     /**
      * Create a new article in Realtime Database
@@ -37,6 +47,7 @@ class NewsModel {
         };
 
         await newDocRef.set(articlePayload);
+        invalidateCache();
         return articlePayload;
     }
 
@@ -44,20 +55,33 @@ class NewsModel {
      * Fetch all articles (optional category filtering)
      */
     static async getArticles(category = null) {
+        const now = Date.now();
+
+        // Serve from in-memory cache when fresh and no category filter
+        // (category-filtered requests are fast subset operations on the cached list)
+        if (_cacheData && (now - _cacheData.ts) < SERVER_CACHE_TTL_MS) {
+            let list = _cacheData.all;
+            if (category) {
+                const lowerCat = category.toLowerCase();
+                list = list.filter((art) => (art.category || '').toLowerCase() === lowerCat);
+            }
+            return list;
+        }
+
+        // Cache miss — fetch from Firebase
         const snapshot = await db.ref(ARTICLES_REF).once('value');
         const articlesObj = snapshot.val() || {};
 
-        let articlesList = Object.values(articlesObj);
+        // Sort all articles once and store in cache
+        const sorted = Object.values(articlesObj).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        _cacheData = { all: sorted, ts: now };
 
         if (category) {
             const lowerCat = category.toLowerCase();
-            articlesList = articlesList.filter(
-                (art) => (art.category || '').toLowerCase() === lowerCat
-            );
+            return sorted.filter((art) => (art.category || '').toLowerCase() === lowerCat);
         }
 
-        // Sort by createdAt descending (newest first)
-        return articlesList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        return sorted;
     }
 
     /**
@@ -92,6 +116,7 @@ class NewsModel {
         }
 
         await articleRef.update(updatePayload);
+        invalidateCache();
 
         const updatedSnapshot = await articleRef.once('value');
         return updatedSnapshot.val();
@@ -109,6 +134,7 @@ class NewsModel {
         }
 
         await articleRef.remove();
+        invalidateCache();
         return true;
     }
 }
