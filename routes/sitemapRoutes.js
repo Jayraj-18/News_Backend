@@ -1,47 +1,79 @@
-// routes/sitemapRoutes.js
+require('dotenv').config();
 const express = require('express');
-const router = express.Router();
-const Article = require('../models/newsModel'); // Import your Article model
+const cors = require('cors');
+const articleRoutes = require('./routes/articleRoutes');
+const authRoutes = require('./routes/authRoutes');
+const sitemapRoutes = require('./routes/sitemapRoutes');
 
-router.get('/sitemap.xml', async (req, res) => {
-  try {
-    const articles = await Article.find({}).sort({ createdAt: -1 });
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-    const baseUrl = 'https://palghardrushti.netlify.app';
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+const configuredOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
 
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+const allowedOrigins = new Set([
+  'http://localhost:5173',
+  ...configuredOrigins,
+]);
 
-    // 1. Homepage Entry
-    xml += `  <url>\n`;
-    xml += `    <loc>${baseUrl}/</loc>\n`;
-    xml += `    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>\n`;
-    xml += `    <changefreq>daily</changefreq>\n`;
-    xml += `    <priority>1.0</priority>\n`;
-    xml += `  </url>\n`;
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.has(origin)) return callback(null, true);
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS policy: origin ${origin} not allowed`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
 
-    // 2. Dynamic Article Entries
-    articles.forEach((article) => {
-      const lastModDate = new Date(article.updatedAt || article.createdAt)
-        .toISOString()
-        .split('T')[0];
-
-      xml += `  <url>\n`;
-      xml += `    <loc>${baseUrl}/article/${article._id}</loc>\n`;
-      xml += `    <lastmod>${lastModDate}</lastmod>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.8</priority>\n`;
-      xml += `  </url>\n`;
-    });
-
-    xml += `</urlset>`;
-
-    res.header('Content-Type', 'application/xml');
-    return res.status(200).send(xml);
-  } catch (error) {
-    console.error('Sitemap error:', error);
-    return res.status(500).end();
+app.use((req, res, next) => {
+  if (req.headers['access-control-request-private-network'] === 'true') {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
   }
+  next();
 });
 
-module.exports = router;
+app.use(cors(corsOptions));
+
+// ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// ─── HEALTH CHECK & ROOT ──────────────────────────────────────────────────────
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'पालघर दृष्टी Backend is running 🚀' });
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Maharashtra News 24 API Service' });
+});
+
+// ─── ROUTES ───────────────────────────────────────────────────────────────────
+app.use('/', sitemapRoutes); // <--- MOVED HERE (BEFORE 404 HANDLER)
+app.use('/api/articles', articleRoutes);
+app.use('/api/auth', authRoutes);
+
+// ─── 404 HANDLER ──────────────────────────────────────────────────────────────
+// (Must be below ALL routes)
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} not found` });
+});
+
+// ─── GLOBAL ERROR HANDLER ─────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ success: false, message: 'Internal server error', error: err.message });
+});
+
+// ─── START SERVER ─────────────────────────────────────────────────────────────
+app.listen(PORT, () => {
+  console.log(`\n🚀 Maharashtra News 24 Backend running on http://localhost:${PORT}`);
+});
