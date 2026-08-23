@@ -70,7 +70,7 @@ app.use('/api/auth', authRoutes); // Add auth routes
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} not found` });
 });
-
+app.use('/', sitemapRoutes);
 // ─── GLOBAL ERROR HANDLER ─────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
