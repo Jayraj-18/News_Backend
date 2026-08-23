@@ -1,25 +1,24 @@
-/**
- * Admin Auth Middleware
- *
- * Protects write routes (POST, PUT, DELETE) by checking for a
- * secret token in the request header: `x-admin-token`.
- *
- * Set ADMIN_SECRET_TOKEN in your .env file.
- */
-const adminAuth = (req, res, next) => {
-  const token = req.headers['x-admin-token'];
-  const expectedToken = process.env.ADMIN_SECRET_TOKEN;
+// middleware/auth.js
+const { admin } = require('../config/firebase');
 
-  if (!expectedToken) {
-    console.error('❌ ADMIN_SECRET_TOKEN is not set in .env');
-    return res.status(500).json({ success: false, message: 'Server misconfiguration: admin token not set' });
+const verifyAdmin = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Unauthorized: No token provided' });
   }
 
-  if (!token || token !== expectedToken) {
-    return res.status(401).json({ success: false, message: 'Unauthorized: invalid or missing admin token' });
-  }
+  const token = authHeader.split(' ')[1];
 
-  next();
+  try {
+    // Verify token via Firebase Admin SDK
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.user = decodedToken;
+    next(); // Valid token, allow operation
+  } catch (error) {
+    console.error('Auth Verification Error:', error);
+    return res.status(403).json({ message: 'Unauthorized: Invalid or expired token' });
+  }
 };
 
-module.exports = { adminAuth };
+module.exports = verifyAdmin;

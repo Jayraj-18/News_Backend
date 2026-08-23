@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const articleRoutes = require('./routes/articleRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,7 +32,7 @@ const corsOptions = {
     callback(new Error(`CORS policy: origin ${origin} not allowed`));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-admin-token'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   optionsSuccessStatus: 204,
 };
@@ -63,6 +64,7 @@ app.get('/', (req, res) => {
 
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
 app.use('/api/articles', articleRoutes);
+app.use('/api/auth', authRoutes); // Add auth routes
 
 // ─── 404 HANDLER ──────────────────────────────────────────────────────────────
 app.use((req, res) => {
