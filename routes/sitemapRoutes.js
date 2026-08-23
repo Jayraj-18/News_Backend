@@ -1,7 +1,7 @@
 // routes/sitemapRoutes.js
 const express = require('express');
 const router = express.Router();
-const Article = require('../models/Article'); // Import your Article model
+const Article = require('../models/newsModel'); // Import your Article model
 
 router.get('/sitemap.xml', async (req, res) => {
   try {
