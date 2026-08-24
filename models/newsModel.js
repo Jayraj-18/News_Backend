@@ -27,6 +27,11 @@ class NewsModel {
             slug: (data.slug || id).toString(),
             titleMr: (data.titleMr || '').toString(),
             summaryMr: (data.summaryMr || '').toString(),
+            metaTitle: (data.metaTitle || '').toString().trim(),
+            metaDescription: (data.metaDescription || '').toString().trim(),
+            focusKeyword: (data.focusKeyword || '').toString().trim(),
+            canonicalUrl: (data.canonicalUrl || '').toString().trim(),
+            noIndex: Boolean(data.noIndex),
             contentMr: (data.contentMr || '').toString(),
             category: (data.category || 'general').toString().trim().toLowerCase(),
             status: (data.status || 'published').toString(),
@@ -113,6 +118,16 @@ class NewsModel {
 
         if (updates.category) {
             updatePayload.category = updates.category.toString().trim().toLowerCase();
+        }
+
+        ['metaTitle', 'metaDescription', 'focusKeyword', 'canonicalUrl'].forEach((field) => {
+            if (Object.prototype.hasOwnProperty.call(updates, field)) {
+                updatePayload[field] = (updates[field] || '').toString().trim();
+            }
+        });
+
+        if (Object.prototype.hasOwnProperty.call(updates, 'noIndex')) {
+            updatePayload.noIndex = Boolean(updates.noIndex);
         }
 
         await articleRef.update(updatePayload);
