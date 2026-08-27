@@ -29,8 +29,14 @@ exports.getAllArticles = async (req, res, next) => {
     const { category } = req.query;
     const articles = await NewsModel.getArticles(category);
 
-    // Let browsers and CDNs cache the list for 1 min; serve stale up to 5 min while revalidating
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    // News must be visible immediately after publication.
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
 
     return res.status(200).json({
       success: true,
