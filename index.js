@@ -52,6 +52,13 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'पालघर दृष्टी Backend is running 🚀' });
 });
 
+// ─── PING (pre-warm endpoint) ─────────────────────────────────────────────────
+// Called by the frontend on page load so Render's server is awake before the
+// actual /api/articles request arrives.  No DB access — responds instantly.
+app.get('/ping', (req, res) => {
+  res.status(200).json({ pong: true });
+});
+
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Maharashtra News 24 API Service' });
 });
