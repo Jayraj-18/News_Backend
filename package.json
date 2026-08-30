@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "migrate:images": "node scripts/migrate-base64-images-to-cloudinary.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
