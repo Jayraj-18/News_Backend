@@ -8,6 +8,28 @@ const ARTICLES_REF = 'articles';
 const SERVER_CACHE_TTL_MS = 30 * 1000; // 30 seconds
 let _cacheData = null;       // { all: Article[], ts: number }
 
+const toArticleSummary = (article) => ({
+    id: article.id,
+    slug: article.slug,
+    titleMr: article.titleMr || '',
+    summaryMr: article.summaryMr || '',
+    category: article.category || 'general',
+    status: article.status || 'published',
+    isHero: Boolean(article.isHero),
+    isBreaking: Boolean(article.isBreaking),
+    readingTime: Number(article.readingTime) || 3,
+    featuredImage: article.featuredImage?.url?.startsWith('data:image')
+        ? { alt: article.featuredImage.alt || '', url: '' }
+        : {
+            alt: article.featuredImage?.alt || '',
+            url: article.featuredImage?.url || ''
+        },
+    author: { name: article.author?.name || 'Editor' },
+    publishedAt: article.publishedAt,
+    createdAt: article.createdAt,
+    updatedAt: article.updatedAt
+});
+
 function invalidateCache() {
     _cacheData = null;
 }
@@ -70,7 +92,7 @@ class NewsModel {
                 const lowerCat = category.toLowerCase();
                 list = list.filter((art) => (art.category || '').toLowerCase() === lowerCat);
             }
-            return list;
+            return list.map(toArticleSummary);
         }
 
         // Cache miss — fetch from Firebase
@@ -83,10 +105,12 @@ class NewsModel {
 
         if (category) {
             const lowerCat = category.toLowerCase();
-            return sorted.filter((art) => (art.category || '').toLowerCase() === lowerCat);
+            return sorted
+                .filter((art) => (art.category || '').toLowerCase() === lowerCat)
+                .map(toArticleSummary);
         }
 
-        return sorted;
+        return sorted.map(toArticleSummary);
     }
 
     /**
