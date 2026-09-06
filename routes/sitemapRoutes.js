@@ -2,16 +2,16 @@ const express = require('express');
 const router = express.Router();
 const NewsModel = require('../models/newsModel');
 
-// Marathi & Unicode-friendly slug generator
+// Marathi Devanagari & Unicode slug generator
 const makeUnicodeSlug = (text) => {
   if (!text) return '';
   const cleanText = text
     .toString()
     .trim()
-    .replace(/[\s\t\n]+/g, '-') // Replace spaces with hyphens
-    .replace(/[^\p{L}\p{N}\-]/gu, ''); // Preserve Marathi (Devanagari) characters, numbers, and hyphens
-  
-  return encodeURI(cleanText); // Encodes non-ASCII characters for XML compliance
+    .replace(/[\s\t\n]+/g, '-')              // Replace spaces with hyphens
+    .replace(/[^\p{L}\p{N}\-]/gu, '');       // Keep Marathi letters, numbers, hyphens
+
+  return encodeURI(cleanText);              // Safe URL encoding for XML
 };
 
 router.get('/sitemap.xml', async (req, res) => {
@@ -39,9 +39,15 @@ router.get('/sitemap.xml', async (req, res) => {
       const validDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
       const lastModDate = validDate.toISOString().split('T')[0];
 
-      // Generate slug directly from article title, or fallback to database slug/id
-      let slug = article.slug ? encodeURI(article.slug) : makeUnicodeSlug(article.title);
-      if (!slug) slug = article.id || article._id;
+      // FORCE SLUGIFYING THE TITLE (Ignores hardcoded article-XXXXX ids)
+      let slug = makeUnicodeSlug(article.title);
+
+      // Fallback only if title is missing
+      if (!slug || slug.startsWith('article-')) {
+        slug = article.slug && !article.slug.startsWith('article-') 
+          ? encodeURI(article.slug) 
+          : article.id || article._id;
+      }
 
       xml += `  <url>\n`;
       xml += `    <loc>${baseUrl}/news/${slug}</loc>\n`;
@@ -53,7 +59,9 @@ router.get('/sitemap.xml', async (req, res) => {
 
     xml += `</urlset>`;
 
+    // Prevent response caching on Render/Netlify
     res.header('Content-Type', 'application/xml');
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
     return res.status(200).send(xml);
   } catch (error) {
     console.error('Sitemap generation error:', error);
