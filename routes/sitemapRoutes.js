@@ -1,19 +1,18 @@
-// routes/sitemapRoutes.js
 const express = require('express');
 const router = express.Router();
 const NewsModel = require('../models/newsModel');
 
 router.get('/sitemap.xml', async (req, res) => {
   try {
-    // 1. Fetch articles using your Firebase custom method
     const articles = await NewsModel.getArticles();
 
-    const baseUrl = 'https://palghardrushti.netlify.app';
+    // Clean base domain without a trailing slash
+    const baseUrl = 'https://palghardrushti.in';
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
 
-    // 2. Add Homepage Entry
+    // 1. Add Homepage Entry
     xml += `  <url>\n`;
     xml += `    <loc>${baseUrl}/</loc>\n`;
     xml += `    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>\n`;
@@ -21,17 +20,21 @@ router.get('/sitemap.xml', async (req, res) => {
     xml += `    <priority>1.0</priority>\n`;
     xml += `  </url>\n`;
 
-    // 3. Add Article Entries
+    // 2. Add Article Entries
     articles.forEach((article) => {
-      // Filter out draft/unpublished articles if needed
+      // Filter out draft/unpublished articles
       if (article.status && article.status !== 'published') return;
 
+      // Safe date parsing to avoid route crashes
       const rawDate = article.updatedAt || article.createdAt || article.publishedAt;
-      const validDate = rawDate ? new Date(rawDate) : new Date();
+      const parsedDate = rawDate ? new Date(rawDate) : new Date();
+      const validDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
       const lastModDate = validDate.toISOString().split('T')[0];
 
-      // Uses article.id or article.slug depending on your routing setup
+      // Article ID/Slug
       const articleIdentifier = article.id || article.slug || article._id;
+
+      if (!articleIdentifier) return; // Skip if no identifier present
 
       xml += `  <url>\n`;
       xml += `    <loc>${baseUrl}/article/${articleIdentifier}</loc>\n`;
