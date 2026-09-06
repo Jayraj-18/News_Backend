@@ -2,16 +2,16 @@ const express = require('express');
 const router = express.Router();
 const NewsModel = require('../models/newsModel');
 
-// Helper function to turn article titles into SEO-friendly slugs if no slug exists
-const slugify = (text) => {
+// Marathi & Unicode-friendly slug generator
+const makeUnicodeSlug = (text) => {
   if (!text) return '';
-  return text
+  const cleanText = text
     .toString()
-    .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-')       // Replace spaces with -
-    .replace(/[^\w\-]+/g, '')   // Remove non-word characters
-    .replace(/\-\-+/g, '-');    // Replace multiple - with single -
+    .replace(/[\s\t\n]+/g, '-') // Replace spaces with hyphens
+    .replace(/[^\p{L}\p{N}\-]/gu, ''); // Preserve Marathi (Devanagari) characters, numbers, and hyphens
+  
+  return encodeURI(cleanText); // Encodes non-ASCII characters for XML compliance
 };
 
 router.get('/sitemap.xml', async (req, res) => {
@@ -39,13 +39,12 @@ router.get('/sitemap.xml', async (req, res) => {
       const validDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
       const lastModDate = validDate.toISOString().split('T')[0];
 
-      // Prioritize article.slug, fallback to slugifying article.title, then fallback to ID
-      const articleSlug = article.slug || slugify(article.title) || article.id || article._id;
-
-      if (!articleSlug) return;
+      // Generate slug directly from article title, or fallback to database slug/id
+      let slug = article.slug ? encodeURI(article.slug) : makeUnicodeSlug(article.title);
+      if (!slug) slug = article.id || article._id;
 
       xml += `  <url>\n`;
-      xml += `    <loc>${baseUrl}/news/${articleSlug}</loc>\n`;
+      xml += `    <loc>${baseUrl}/news/${slug}</loc>\n`;
       xml += `    <lastmod>${lastModDate}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.8</priority>\n`;
