@@ -114,14 +114,20 @@ class NewsModel {
     }
 
     /**
-     * Get a single article by ID
+     * Get a single article by ID or slug
      */
-    static async getArticleById(id) {
-        const snapshot = await db.ref(`${ARTICLES_REF}/${id}`).once('value');
-        if (!snapshot.exists()) {
-            return null;
+    static async getArticleByIdOrSlug(identifier) {
+        const snapshot = await db.ref(`${ARTICLES_REF}/${identifier}`).once('value');
+        if (snapshot.exists()) {
+            return snapshot.val();
         }
-        return snapshot.val();
+
+        const articlesSnapshot = await db.ref(ARTICLES_REF)
+            .orderByChild('slug')
+            .equalTo(identifier)
+            .once('value');
+        const matches = articlesSnapshot.val();
+        return matches ? Object.values(matches)[0] : null;
     }
 
     /**

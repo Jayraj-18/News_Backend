@@ -52,7 +52,7 @@ exports.getAllArticles = async (req, res, next) => {
 // GET /api/articles/:id
 exports.getArticleById = async (req, res, next) => {
   try {
-    const article = await NewsModel.getArticleById(req.params.id);
+    const article = await NewsModel.getArticleByIdOrSlug(req.params.id);
 
     if (!article) {
       return res.status(404).json({
