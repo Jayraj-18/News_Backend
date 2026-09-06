@@ -40,7 +40,7 @@ router.get('/sitemap.xml', async (req, res) => {
       const lastModDate = validDate.toISOString().split('T')[0];
 
       // FORCE SLUGIFYING THE TITLE (Ignores hardcoded article-XXXXX ids)
-      let slug = makeUnicodeSlug(article.title);
+    let slug = makeUnicodeSlug(article.titleMr || article.title);
 
       // Fallback only if title is missing
       if (!slug || slug.startsWith('article-')) {
