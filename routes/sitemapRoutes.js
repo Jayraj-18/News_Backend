@@ -7,9 +7,10 @@ const makeUnicodeSlug = (text) => {
   if (!text) return '';
   return text
     .toString()
+    .normalize('NFKD')
     .trim()
     .replace(/[\s\t\n]+/g, '-')              // Replace spaces with hyphens
-    .replace(/[^\p{L}\p{N}\-]/gu, '');       // Keep letters, numbers, hyphens
+    .replace(/[^\p{L}\p{M}\p{N}\-]/gu, ''); // Keep letters, marks, numbers, hyphens
 };
 
 // Escape only what XML requires — do NOT percent-encode

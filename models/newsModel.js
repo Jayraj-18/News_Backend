@@ -4,7 +4,7 @@ const ARTICLES_REF = 'articles';
 
 const slugify = (value) => String(value || '')
     .normalize('NFKD')
-    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/[^\p{L}\p{M}\p{N}\s-]/gu, '')
     .trim()
     .replace(/[\s-]+/g, '-')
     .toLowerCase();
@@ -20,6 +20,11 @@ const toArticleSummary = (article) => ({
     slug: article.slug,
     titleMr: article.titleMr || '',
     summaryMr: article.summaryMr || '',
+    metaTitle: article.metaTitle || '',
+    metaDescription: article.metaDescription || '',
+    focusKeyword: article.focusKeyword || '',
+    canonicalUrl: article.canonicalUrl || '',
+    noIndex: Boolean(article.noIndex),
     category: article.category || 'general',
     status: article.status || 'published',
     isHero: Boolean(article.isHero),
@@ -53,7 +58,7 @@ class NewsModel {
         // Build payload ensuring NO properties are undefined (RTDB safety)
         const articlePayload = {
             id,
-            slug: (data.slug || id).toString(),
+            slug: slugify(data.titleMr || data.titleEn) || (data.slug || id).toString(),
             titleMr: (data.titleMr || '').toString(),
             summaryMr: (data.summaryMr || '').toString(),
             metaTitle: (data.metaTitle || '').toString().trim(),
@@ -140,8 +145,9 @@ class NewsModel {
         const allArticlesSnapshot = await db.ref(ARTICLES_REF).once('value');
         const articles = Object.values(allArticlesSnapshot.val() || {});
         return articles.find((article) => {
-            const fallbackSlug = slugify(article.titleEn || article.titleMr);
-            return fallbackSlug && fallbackSlug === identifier;
+            const fallbackSlug = slugify(article.titleMr || article.titleEn);
+            const legacySlug = fallbackSlug.replace(/\p{M}/gu, '');
+            return fallbackSlug === identifier || (legacySlug && legacySlug === identifier);
         }) || null;
     }
 
