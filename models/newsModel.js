@@ -2,6 +2,13 @@ const { db } = require('../config/firebase');
 
 const ARTICLES_REF = 'articles';
 
+const slugify = (value) => String(value || '')
+    .normalize('NFKD')
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .trim()
+    .replace(/[\s-]+/g, '-')
+    .toLowerCase();
+
 // ─── In-memory server cache ───────────────────────────────────────────────
 // Avoids hammering Firebase Realtime Database on every request.
 // Cache is invalidated any time an article is written or deleted.
@@ -127,7 +134,15 @@ class NewsModel {
             .equalTo(identifier)
             .once('value');
         const matches = articlesSnapshot.val();
-        return matches ? Object.values(matches)[0] : null;
+        if (matches) return Object.values(matches)[0];
+
+        // Resolve title-based URLs for older records that used article IDs as slugs.
+        const allArticlesSnapshot = await db.ref(ARTICLES_REF).once('value');
+        const articles = Object.values(allArticlesSnapshot.val() || {});
+        return articles.find((article) => {
+            const fallbackSlug = slugify(article.titleEn || article.titleMr);
+            return fallbackSlug && fallbackSlug === identifier;
+        }) || null;
     }
 
     /**
