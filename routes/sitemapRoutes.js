@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const NewsModel = require('../models/newsModel');
 
-// Marathi Devanagari slug generator — returns RAW Devanagari, no percent-encoding
+// Keep Marathi characters in the slug before encoding the URL for the sitemap.
 const makeUnicodeSlug = (text) => {
   if (!text) return '';
   return text
@@ -13,7 +13,7 @@ const makeUnicodeSlug = (text) => {
     .replace(/[^\p{L}\p{M}\p{N}\-]/gu, ''); // Keep letters, marks, numbers, hyphens
 };
 
-// Escape only what XML requires — do NOT percent-encode
+// Escape XML after URL encoding so the <loc> remains valid XML and a valid URL.
 const escapeXml = (str) =>
   str
     .replace(/&/g, '&amp;')
@@ -58,7 +58,8 @@ router.get('/sitemap.xml', async (req, res) => {
       }
 
       xml += `  <url>\n`;
-      xml += `    <loc>${baseUrl}/news/${escapeXml(slug)}</loc>\n`;
+      const encodedSlug = encodeURIComponent(slug);
+      xml += `    <loc>${baseUrl}/news/${escapeXml(encodedSlug)}</loc>\n`;
       xml += `    <lastmod>${lastModDate}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.8</priority>\n`;
