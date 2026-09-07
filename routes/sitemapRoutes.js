@@ -13,7 +13,7 @@ const makeUnicodeSlug = (text) => {
     .replace(/[^\p{L}\p{M}\p{N}\-]/gu, ''); // Keep letters, marks, numbers, hyphens
 };
 
-// Escape XML after URL encoding so the <loc> remains valid XML and a valid URL.
+// Escape XML while keeping Marathi characters readable in the sitemap.
 const escapeXml = (str) =>
   str
     .replace(/&/g, '&amp;')
@@ -58,8 +58,7 @@ router.get('/sitemap.xml', async (req, res) => {
       }
 
       xml += `  <url>\n`;
-      const encodedSlug = encodeURIComponent(slug);
-      xml += `    <loc>${baseUrl}/news/${escapeXml(encodedSlug)}</loc>\n`;
+      xml += `    <loc>${baseUrl}/news/${escapeXml(slug)}</loc>\n`;
       xml += `    <lastmod>${lastModDate}</lastmod>\n`;
       xml += `    <changefreq>weekly</changefreq>\n`;
       xml += `    <priority>0.8</priority>\n`;
