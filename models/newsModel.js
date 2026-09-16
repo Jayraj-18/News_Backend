@@ -78,7 +78,9 @@ class NewsModel {
             },
             author: {
                 uid: (data.author?.uid || 'admin').toString(),
-                name: (data.author?.name || 'Editor').toString()
+                name: (data.author?.name || 'Editor').toString(),
+                role: (data.author?.role || 'Sampadak (Editor)').toString(),
+                avatar: (data.author?.avatar || '/one.webp').toString()
             },
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -123,6 +125,40 @@ class NewsModel {
         }
 
         return sorted.map(toArticleSummary);
+    }
+
+    /**
+     * Fetch the public fields needed by the RSS feed without exposing article
+     * bodies through an API response.
+     */
+    static async getArticlesForFeed() {
+        const now = Date.now();
+        let articles;
+
+        if (_cacheData && (now - _cacheData.ts) < SERVER_CACHE_TTL_MS) {
+            articles = _cacheData.all;
+        } else {
+            const snapshot = await db.ref(ARTICLES_REF).once('value');
+            const articlesObj = snapshot.val() || {};
+            articles = Object.values(articlesObj).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            _cacheData = { all: articles, ts: now };
+        }
+
+        return articles
+            .filter((article) => !article.status || article.status === 'published')
+            .map((article) => ({
+                id: article.id,
+                slug: article.slug || '',
+                titleMr: article.titleMr || '',
+                summaryMr: article.summaryMr || '',
+                contentMr: article.contentMr || '',
+                category: article.category || 'general',
+                featuredImage: article.featuredImage || null,
+                author: { name: article.author?.name || 'Editor' },
+                publishedAt: article.publishedAt,
+                createdAt: article.createdAt,
+                updatedAt: article.updatedAt
+            }));
     }
 
     /**

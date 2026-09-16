@@ -4,6 +4,7 @@ const cors = require('cors');
 const articleRoutes = require('./routes/articleRoutes');
 const authRoutes = require('./routes/authRoutes');
 const sitemapRoutes = require('./routes/sitemapRoutes');
+const rssRoutes = require('./routes/rssRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -66,6 +67,7 @@ app.get('/', (req, res) => {
 
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
 app.use('/', sitemapRoutes); // <--- MOVED HERE (BEFORE 404 HANDLER)
+app.use('/', rssRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/auth', authRoutes);
 
