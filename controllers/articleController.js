@@ -19,6 +19,12 @@ exports.createArticle = async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Error creating article:', error);
+    if (error.code === 'INVALID_SLUG' || error.code === 'DUPLICATE_SLUG') {
+      return res.status(error.code === 'DUPLICATE_SLUG' ? 409 : 400).json({
+        success: false,
+        message: error.message
+      });
+    }
     next(error);
   }
 };
@@ -90,6 +96,12 @@ exports.updateArticle = async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Error updating article:', error);
+    if (error.code === 'INVALID_SLUG' || error.code === 'DUPLICATE_SLUG') {
+      return res.status(error.code === 'DUPLICATE_SLUG' ? 409 : 400).json({
+        success: false,
+        message: error.message
+      });
+    }
     next(error);
   }
 };

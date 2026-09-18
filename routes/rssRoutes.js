@@ -1,6 +1,7 @@
 const express = require('express');
 const RSS = require('rss');
 const NewsModel = require('../models/newsModel');
+const { normalizeSlug } = require('../utils/slugify');
 
 const router = express.Router();
 const BASE_URL = 'https://palghardrushti.in';
@@ -8,15 +9,8 @@ const FEED_URL = `${BASE_URL}/rss.xml`;
 const RSS_CACHE_TTL_MS = 60 * 1000;
 let feedCache = { xml: null, expiresAt: 0 };
 
-const slugify = (value) => String(value || '')
-  .normalize('NFKD')
-  .replace(/[^\p{L}\p{M}\p{N}\s-]/gu, '')
-  .trim()
-  .replace(/[\s-]+/g, '-')
-  .toLowerCase();
-
-const getArticleSlug = (article) => slugify(article.titleMr || article.titleEn)
-  || (article.slug && !/^article-\d+$/.test(article.slug) ? article.slug : '')
+const getArticleSlug = (article) => normalizeSlug(article.slug)
+  || normalizeSlug(article.titleMr || article.titleEn)
   || String(article.id || '');
 
 const stripHtml = (value) => String(value || '')

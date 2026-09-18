@@ -1,13 +1,7 @@
 const { db } = require('../config/firebase');
+const { normalizeSlug, isValidSlug } = require('../utils/slugify');
 
 const ARTICLES_REF = 'articles';
-
-const slugify = (value) => String(value || '')
-    .normalize('NFKD')
-    .replace(/[^\p{L}\p{M}\p{N}\s-]/gu, '')
-    .trim()
-    .replace(/[\s-]+/g, '-')
-    .toLowerCase();
 
 // ─── In-memory server cache ───────────────────────────────────────────────
 // Avoids hammering Firebase Realtime Database on every request.
@@ -54,11 +48,26 @@ class NewsModel {
         const articlesRef = db.ref(ARTICLES_REF);
         const newDocRef = articlesRef.push();
         const id = newDocRef.key;
+        const requestedSlug = String(data.slug || '').trim();
+        const slug = normalizeSlug(requestedSlug || data.titleMr || data.titleEn || id);
+
+        if (!isValidSlug(slug)) {
+            const error = new Error('Slug must contain only lowercase letters, numbers, and hyphens.');
+            error.code = 'INVALID_SLUG';
+            throw error;
+        }
+
+        const existingSlug = await articlesRef.orderByChild('slug').equalTo(slug).once('value');
+        if (existingSlug.exists()) {
+            const error = new Error('This slug is already in use. Please choose another slug.');
+            error.code = 'DUPLICATE_SLUG';
+            throw error;
+        }
 
         // Build payload ensuring NO properties are undefined (RTDB safety)
         const articlePayload = {
             id,
-            slug: slugify(data.titleMr || data.titleEn) || (data.slug || id).toString(),
+            slug,
             titleMr: (data.titleMr || '').toString(),
             summaryMr: (data.summaryMr || '').toString(),
             metaTitle: (data.metaTitle || '').toString().trim(),
@@ -181,8 +190,8 @@ class NewsModel {
         const allArticlesSnapshot = await db.ref(ARTICLES_REF).once('value');
         const articles = Object.values(allArticlesSnapshot.val() || {});
         return articles.find((article) => {
-            const fallbackSlug = slugify(article.titleMr || article.titleEn);
-            const legacySlug = fallbackSlug.replace(/\p{M}/gu, '');
+            const fallbackSlug = normalizeSlug(article.titleMr || article.titleEn);
+            const legacySlug = fallbackSlug;
             return fallbackSlug === identifier || (legacySlug && legacySlug === identifier);
         }) || null;
     }
@@ -202,6 +211,28 @@ class NewsModel {
             ...updates,
             updatedAt: Date.now()
         };
+
+        if (Object.prototype.hasOwnProperty.call(updates, 'slug')) {
+            const slug = normalizeSlug(updates.slug);
+            if (!isValidSlug(slug)) {
+                const error = new Error('Slug must contain only lowercase letters, numbers, and hyphens.');
+                error.code = 'INVALID_SLUG';
+                throw error;
+            }
+
+            const existingSlug = await db.ref(ARTICLES_REF)
+                .orderByChild('slug')
+                .equalTo(slug)
+                .once('value');
+            const duplicate = Object.values(existingSlug.val() || {})
+                .some((article) => String(article.id) !== String(id));
+            if (duplicate) {
+                const error = new Error('This slug is already in use. Please choose another slug.');
+                error.code = 'DUPLICATE_SLUG';
+                throw error;
+            }
+            updatePayload.slug = slug;
+        }
 
         if (updates.category) {
             updatePayload.category = updates.category.toString().trim().toLowerCase();

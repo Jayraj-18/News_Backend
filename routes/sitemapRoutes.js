@@ -1,17 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const NewsModel = require('../models/newsModel');
-
-// Keep Marathi characters in the slug before encoding the URL for the sitemap.
-const makeUnicodeSlug = (text) => {
-  if (!text) return '';
-  return text
-    .toString()
-    .normalize('NFKD')
-    .trim()
-    .replace(/[\s\t\n]+/g, '-')              // Replace spaces with hyphens
-    .replace(/[^\p{L}\p{M}\p{N}\-]/gu, ''); // Keep letters, marks, numbers, hyphens
-};
+const { normalizeSlug } = require('../utils/slugify');
 
 // Escape XML while keeping Marathi characters readable in the sitemap.
 const escapeXml = (str) =>
@@ -47,15 +37,11 @@ router.get('/sitemap.xml', async (req, res) => {
       const validDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
       const lastModDate = validDate.toISOString().split('T')[0];
 
-      // Use titleMr (Marathi title) for the slug
-      let slug = makeUnicodeSlug(article.titleMr || article.title);
-
-      // Fallback only if titleMr/title is missing
-      if (!slug || slug.startsWith('article-')) {
-        slug = article.slug && !article.slug.startsWith('article-')
-          ? article.slug
-          : article.id || article._id;
-      }
+      const storedSlug = normalizeSlug(article.slug);
+      const legacyTitleSlug = normalizeSlug(article.titleMr || article.title);
+      const slug = storedSlug && !storedSlug.startsWith('article-')
+        ? storedSlug
+        : legacyTitleSlug || article.id || article._id;
 
       xml += `  <url>\n`;
       xml += `    <loc>${baseUrl}/news/${escapeXml(slug)}</loc>\n`;
